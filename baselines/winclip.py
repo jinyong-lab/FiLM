@@ -53,7 +53,7 @@ def z(x):
 
 def main():
     random.seed(0); torch.manual_seed(0)
-    res = {"WinCLIP(zero)": [], "WinCLIP+(1)": [], "WinCLIP+(5)": []}
+    res = {"WinCLIP(zero)": [], "WinCLIP+(1)": [], "WinCLIP+(2)": [], "WinCLIP+(5)": []}
     for cat in TEST_CATS:
         cd = os.path.join(DATA, cat)
         test_paths, labels = [], []
@@ -68,7 +68,7 @@ def main():
         res["WinCLIP(zero)"].append(roc_auc_score(labels, s_txt.numpy()))
 
         train_paths = sorted(glob.glob(os.path.join(cd, "train", "good", "*.png")))
-        for K, key in [(1, "WinCLIP+(1)"), (5, "WinCLIP+(5)")]:
+        for K, key in [(1, "WinCLIP+(1)"), (2, "WinCLIP+(2)"), (5, "WinCLIP+(5)")]:
             aucs = []
             for draw in range(5):
                 g = random.Random(7 * K + draw)
