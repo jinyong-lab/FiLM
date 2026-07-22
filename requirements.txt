@@ -1,0 +1,8 @@
+# FiLM 기반 비지도 Few-shot 이상탐지
+torch>=2.0
+torchvision>=0.15
+numpy>=1.24
+scikit-learn>=1.3
+Pillow>=9.5
+matplotlib>=3.7
+open_clip_torch>=2.20   # baselines/winclip.py 전용 (CLIP ViT-B/16)

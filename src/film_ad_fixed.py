@@ -5,7 +5,7 @@
   최종 F.normalize(dim=1)로 패치 L2정규화(baseline 특징공간과 일치). 초기 전 블록=항등 → 파이프라인이
   입력특징(patch-NN) 성능에서 출발 → 학습은 개선만 가능(못해도 입력 유지). FILMAD_CACHE로 특징 선택.
 """
-import random
+import os, random
 import numpy as np
 import torch, torch.nn as nn, torch.nn.functional as F
 from sklearn.metrics import roc_auc_score
@@ -14,6 +14,8 @@ from film_ad import load, to_map, TRAIN_CATS, TEST_CATS, dev, C, S
 Z, CH, NB = 128, 512, 4
 STEPS, MARGIN, LR, BANK_SUB = 20000, 0.7, 1e-3, 1024
 EVAL_EVERY = 2000
+REG_LAM = float(os.environ.get("REG_LAM", 0))      # 특화억제 정규화(입력특징서 벗어난 정도 벌점)
+AUG_STD = float(os.environ.get("AUG_STD", 0))      # 메타증강(support 잡음, 태스크 암기 억제)
 
 
 class TaskEncoder(nn.Module):
@@ -104,11 +106,15 @@ def meta_train(train_feats, train_test):
         qi = torch.randint(tf.shape[0], (1,)).item()
         q = to_map(tf[qi]).to(dev).unsqueeze(0)
         mask = torch.tensor(tp[qi].reshape(-1) > 0, device=dev)
-        z = enc(supp)
-        allml = ml(torch.cat([supp, q]), z)
+        supp_z = F.normalize(supp + AUG_STD * supp.std() * torch.randn_like(supp), dim=1) if AUG_STD > 0 else supp
+        z = enc(supp_z)
+        inp = torch.cat([supp, q])
+        allml = ml(inp, z)
         supp_ml, q_ml = allml[:K], allml[K:]
         bank = to_bank(supp_ml, BANK_SUB); qd = patch_dist(bank, to_bank(q_ml))
-        loss = (qd[~mask].mean() + F.relu(MARGIN - qd[mask]).mean()) if mask.any() else qd.mean()
+        margin = (qd[~mask].mean() + F.relu(MARGIN - qd[mask]).mean()) if mask.any() else qd.mean()
+        reg = ((allml - inp) ** 2).sum(1).mean()         # 특화억제: 입력특징서 벗어난 정도 벌점
+        loss = margin + REG_LAM * reg
         opt.zero_grad(); loss.backward(); opt.step()
         if (step + 1) % 500 == 0:
             print(f"  step {step+1}/{STEPS} loss={loss.item():.4f}", flush=True)

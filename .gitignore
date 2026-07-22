@@ -2,3 +2,7 @@ __pycache__/
 *.pyc
 *.pt
 *.log
+# 대용량 특징 캐시 / 산출물 (재생성 가능)
+feature_cache_*/
+figs/
+*.png
